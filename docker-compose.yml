@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: automatic-scan-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: automatic-scan-backend
+    restart: unless-stopped
+    environment:
+      # Передаем все переменные из .env файла
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      
+      REDCHECK_URL: ${REDCHECK_URL}
+      REDCHECK_LOGIN: ${REDCHECK_LOGIN}
+      REDCHECK_PASSWORD: ${REDCHECK_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_NAME: ${APP_NAME}
+      APP_VERSION: ${APP_VERSION}
+      ENVIRONMENT: ${ENVIRONMENT}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
